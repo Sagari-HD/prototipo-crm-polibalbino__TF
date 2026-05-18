@@ -4,6 +4,8 @@ header("Access-Control-Allow-Methods: POST, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type");
 header("Content-Type: application/json; charset=UTF-8");
 
+require_once 'auth.php';
+
 $conn = new mysqli("localhost", "root", "", "polibalbino_db");
 
 if ($conn->connect_error) {
@@ -12,7 +14,7 @@ if ($conn->connect_error) {
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $data = json_decode(file_get_contents("php://input"), true);
-    
+
     $orcamento_id = $data['orcamento_id'];
     $items = $data['items']; // Esperamos um array de itens
 
@@ -30,14 +32,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // 1. Inserir o item na tabela de ligação
         $stmt = $conn->prepare("INSERT INTO itens_orcamento (orcamento_id, produto_codigo, quantidade, preco_unitario) VALUES (?, ?, ?, ?)");
         $stmt->bind_param("isid", $orcamento_id, $codigo, $quantidade, $preco);
-        
+
         if ($stmt->execute()) {
-            // 2. ATUALIZAR O RESERVADO NO STOCK (A lógica que faltava!)
-            // Somamos a quantidade deste item ao que já estava reservado no produto
-            $updateStmt = $conn->prepare("UPDATE produtos SET quantidade_reservada = quantidade_reservada + ? WHERE codigo = ?");
-            $updateStmt->bind_param("is", $quantidade, $codigo);
-            $updateStmt->execute();
-            
+            // A reserva de estoque NÃO é feita aqui.
+            // Ela ocorre exclusivamente em atualizar_status.php,
+            // quando o card é movido para a coluna "Ganho".
+
             $successCount++;
         }
     }

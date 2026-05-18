@@ -5,6 +5,8 @@ header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type");
 header("Content-Type: application/json; charset=UTF-8");
 
+require_once 'auth.php';
+
 // Responde a requisições de pré-venda (Pre-flight) do navegador
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;

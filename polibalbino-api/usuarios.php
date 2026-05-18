@@ -4,6 +4,8 @@ header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type");
 header("Content-Type: application/json; charset=UTF-8");
 
+require_once 'auth.php';
+
 // Conexão com o banco
 $conn = new mysqli("localhost", "root", "", "polibalbino_db");
 
@@ -28,8 +30,10 @@ switch ($method) {
     // --- CREATE (Cadastrar novo usuário) ---
     case 'POST':
         $data = json_decode(file_get_contents("php://input"), true);
+        // Gera o hash seguro da senha antes de salvar
+        $senhaHash = password_hash($data['password'], PASSWORD_BCRYPT);
         $stmt = $conn->prepare("INSERT INTO usuarios (nome, email, senha, cargo) VALUES (?, ?, ?, ?)");
-        $stmt->bind_param("ssss", $data['name'], $data['email'], $data['password'], $data['role']);
+        $stmt->bind_param("ssss", $data['name'], $data['email'], $senhaHash, $data['role']);
 
         if ($stmt->execute()) {
             echo json_encode(["message" => "Usuário criado!", "id" => $conn->insert_id]);

@@ -6,8 +6,40 @@ import {
   BarChart2, FileText, Upload, Handshake, Inbox, History, LogOut, TrendingUp, PieChart,
   ArrowLeft, Printer, Phone, Truck, CreditCard, Calendar, Leaf, CheckCircle2
 } from 'lucide-react';
+
+// --- Componente de Notificação (Toast) ---
+function Toast({ message, type, onClose }) {
+  useEffect(() => {
+    const timer = setTimeout(onClose, 3500);
+    return () => clearTimeout(timer);
+  }, [onClose]);
+
+  const colors = {
+    success: 'bg-green-500',
+    error: 'bg-red-500',
+    warning: 'bg-yellow-500',
+    info: 'bg-blue-500'
+  };
+
+  return (
+    <div className={`fixed bottom-6 right-6 z-[9999] flex items-center gap-3 px-5 py-4 rounded-xl text-white font-semibold shadow-2xl ${colors[type] || colors.info} animate-in slide-in-from-bottom-4 duration-300`}>
+      <span>{message}</span>
+      <button onClick={onClose} className="ml-2 opacity-70 hover:opacity-100 text-lg leading-none">×</button>
+    </div>
+  );
+}
+
 // --- Dados Iniciais de Exemplo (Agora com Preços) ---
 const INITIAL_DATA = [];
+
+// 🔐 URL base da API — altere aqui se mudar o servidor
+const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost/polibalbino-api';
+
+// 🔐 Monta os headers com o token de autenticação em todas as requisições
+const authHeaders = () => ({
+  'Content-Type': 'application/json',
+  'Authorization': `Bearer ${localStorage.getItem('polibalbino_token') || ''}`
+});
 
 
 
@@ -18,6 +50,11 @@ export default function App() {
     // Se achar, ele já começa logado. Se não, começa null (tela de login)
     return savedUser ? JSON.parse(savedUser) : null;
   });
+
+  // --- Toast de Notificação ---
+  const [toast, setToast] = useState(null); // { message, type }
+  const showToast = (message, type = 'success') => setToast({ message, type });
+
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [loginError, setLoginError] = useState('');
@@ -51,7 +88,7 @@ export default function App() {
   // 2. Criar a função que busca os dados no seu orcamentos.php
   const fetchQuotes = async () => {
     try {
-      const response = await fetch('http://localhost/polibalbino-api/orcamentos.php');
+      const response = await fetch(`${API_BASE}/orcamentos.php`, { headers: authHeaders() });
       const data = await response.json();
       setQuotes(data); // Isso faz os cards aparecerem na tela
     } catch (error) {
@@ -71,7 +108,7 @@ export default function App() {
     setLoginError(''); // Limpa erros antigos
 
     try {
-      const response = await fetch('http://localhost/polibalbino-api/login.php', {
+      const response = await fetch(`${API_BASE}/login.php`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -82,6 +119,8 @@ export default function App() {
 
       if (response.ok) {
         const user = await response.json();
+        // Salva o token separado para uso nas requisições
+        localStorage.setItem('polibalbino_token', user.token);
         // Se o PHP validou, a gente salva o usuário no estado e no navegador
         setCurrentUser(user);
         localStorage.setItem('polibalbino_user', JSON.stringify(user));
@@ -131,7 +170,7 @@ export default function App() {
 
   // BUSCA PRODUTOS NO BANCO DE DADOS (XAMPP)
   useEffect(() => {
-    fetch('http://localhost/polibalbino-api/produtos.php')
+    fetch(`${API_BASE}/produtos.php`, { headers: authHeaders() })
       .then(response => response.json())
       .then(data => {
         // Coloca os dados do banco dentro do seu estado inventory
@@ -143,7 +182,7 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    fetch('http://localhost/polibalbino-api/usuarios.php')
+    fetch(`${API_BASE}/usuarios.php`, { headers: authHeaders() })
       .then(res => res.json())
       .then(data => {
         // O seu PHP retorna 'nome as name' e 'cargo as role', 
@@ -161,15 +200,15 @@ export default function App() {
 
     // 1. Verificação: Não deixa criar sem os dados básicos
     if (!newUserFormData.name || !newUserFormData.email || !newUserFormData.password) {
-      alert("Por favor, preencha Nome, E-mail e Senha!");
+      showToast("Por favor, preencha Nome, E-mail e Senha!", 'warning');
       return;
     }
 
     try {
       // 2. Manda o POST para o seu PHP
-      const response = await fetch('http://localhost/polibalbino-api/usuarios.php', {
+      const response = await fetch(`${API_BASE}/usuarios.php`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: authHeaders(),
         body: JSON.stringify({
           name: newUserFormData.name,
           email: newUserFormData.email,
@@ -181,43 +220,44 @@ export default function App() {
       const result = await response.json();
 
       if (response.ok) {
-        alert(`✅ Perfil de ${newUserFormData.name} salvo no banco com sucesso!`);
+        showToast(`Perfil de ${newUserFormData.name} salvo com sucesso!`);
 
         // 3. Limpa o formulário
         setNewUserFormData({ name: '', email: '', password: '', role: 'Vendedor' });
 
         // 4. ATUALIZA A TELA: Busca a lista atualizada do MySQL
-        const res = await fetch('http://localhost/polibalbino-api/usuarios.php');
+        const res = await fetch(`${API_BASE}/usuarios.php`, { headers: authHeaders() });
         const data = await res.json();
         setUsersList(data);
       } else {
-        alert("Erro ao salvar: " + result.error);
+        showToast("Erro ao salvar: " + result.error, 'error');
       }
     } catch (error) {
       console.error("Erro na conexão:", error);
-      alert("O servidor XAMPP está desligado?");
+      showToast("O servidor XAMPP está desligado?", 'error');
     }
   };
 
   const handleDeleteUser = async (id) => {
     // Proteção: Verifique o ID do seu admin no banco (pode ser 1 em vez de 'u1')
     if (id === 1 || id === '1') {
-      return alert("O administrador principal não pode ser removido.");
+      return showToast("O administrador principal não pode ser removido.", 'error');
     }
 
     if (window.confirm("Tem certeza que deseja excluir este acesso? O usuário não poderá mais logar.")) {
       try {
         // 🚩 Chamada DELETE passando o ID na URL
-        const response = await fetch(`http://localhost/polibalbino-api/usuarios.php?id=${id}`, {
-          method: 'DELETE'
+        const response = await fetch(`${API_BASE}/usuarios.php?id=${id}`, {
+          method: 'DELETE',
+          headers: authHeaders()
         });
 
         if (response.ok) {
-          alert("Usuário removido do banco de dados!");
+          showToast("Usuário removido do banco de dados!");
           // Atualiza a lista na tela para o usuário sumir na hora
           setUsersList(usersList.filter(u => u.id !== id));
         } else {
-          alert("Erro ao remover do banco.");
+          showToast("Erro ao remover do banco.", 'error');
         }
       } catch (error) {
         console.error("Erro ao deletar:", error);
@@ -236,18 +276,16 @@ export default function App() {
     const ehDono = cardParaDeletar.createdBy === currentUser.name;
 
     if (!ehAdmin && !ehDono) {
-      alert("Acesso Negado: Você não tem permissão para excluir este orçamento.");
+      showToast("Acesso negado: você não pode excluir este orçamento.", 'error');
       return;
     }
 
     if (window.confirm(`Tem certeza que deseja excluir permanentemente o card de ${cardParaDeletar.client}?`)) {
       try {
         // 1. AVISAR O PHP (BANCO DE DADOS)
-        const response = await fetch('http://localhost/polibalbino-api/orcamentos.php', {
+        const response = await fetch(`${API_BASE}/orcamentos.php`, {
           method: 'DELETE',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers: authHeaders(),
           body: JSON.stringify({ id: cardId }) // Mandamos o ID para o PHP
         });
 
@@ -267,11 +305,11 @@ export default function App() {
 
 
         } else {
-          alert("❌ Erro no banco de dados: " + (resultado.error || "Erro desconhecido"));
+          showToast("Erro no banco de dados: " + (resultado.error || "Erro desconhecido"), 'error');
         }
       } catch (error) {
         console.error("Erro na conexão:", error);
-        alert("Falha ao conectar com o servidor Polibalbino.");
+        showToast("Falha ao conectar com o servidor Polibalbino.", 'error');
       }
     }
   };
@@ -294,7 +332,7 @@ export default function App() {
   // --- INTEGRAÇÃO COM A API DE PRODUTOS ---
   const fetchProdutos = async () => {
     try {
-      const response = await fetch('http://localhost/polibalbino-api/produtos.php');
+      const response = await fetch(`${API_BASE}/produtos.php`, { headers: authHeaders() });
       const data = await response.json();
 
       // Se o PHP mandou os dados, a gente guarda nas duas variáveis!
@@ -394,9 +432,6 @@ export default function App() {
       const criadorId = String(q.createdBy || "").trim();
       const usuarioLogadoId = String(currentUser.id || "").trim();
 
-      // 🚩 ADICIONE ESSA LINHA PARA TESTAR:
-      console.log(`Comparando Card ${q.id}: Criador no Card: "${criadorId}" vs Logado: "${usuarioLogadoId}"`);
-
       const nomeNoCard = String(q.createdBy || "").toLowerCase();
       const nomeDaAna = String(currentUser.name || "").toLowerCase();
 
@@ -467,9 +502,9 @@ export default function App() {
       // 2. Decidimos se vamos Criar (POST) ou Editar (PUT)
       const metodo = formData.id ? 'PUT' : 'POST';
 
-      const response = await fetch('http://localhost/polibalbino-api/produtos.php', {
+      const response = await fetch(`${API_BASE}/produtos.php`, {
         method: metodo,
-        headers: { 'Content-Type': 'application/json' },
+        headers: authHeaders(),
         body: JSON.stringify(produtoDados)
       });
 
@@ -477,19 +512,35 @@ export default function App() {
         // 3. Se deu certo no banco, atualizamos a tela
         await fetchProdutos(); // Chama a função que busca do banco
         handleCloseModal();    // Fecha o modal e limpa os campos
-        alert(formData.id ? "Produto atualizado!" : "Produto criado com sucesso!");
+        showToast(formData.id ? "Produto atualizado!" : "Produto criado com sucesso!");
       } else {
-        alert("Erro ao salvar no banco de dados.");
+        showToast("Erro ao salvar no banco de dados.", 'error');
       }
     } catch (error) {
       console.error("Erro na conexão com a API:", error);
-      alert("Não foi possível conectar ao servidor XAMPP.");
+      showToast("Não foi possível conectar ao servidor XAMPP.", 'error');
     }
   };
 
-  const handleDeleteItem = (id) => {
+  const handleDeleteItem = async (id) => {
     if (window.confirm('Tem certeza que deseja excluir este item?')) {
-      setItems(items.filter(item => item.id !== id));
+      try {
+        const response = await fetch(`${API_BASE}/produtos.php?id=${id}`, {
+          method: 'DELETE',
+          headers: authHeaders()
+        });
+
+        if (response.ok) {
+          // Só remove da tela após confirmação do banco
+          await fetchProdutos();
+        } else {
+          const data = await response.json();
+          showToast('Erro ao excluir produto: ' + (data.error || 'Erro desconhecido'), 'error');
+        }
+      } catch (error) {
+        console.error('Erro ao excluir produto:', error);
+        showToast('Não foi possível conectar ao servidor.', 'error');
+      }
     }
   };
 
@@ -498,9 +549,6 @@ export default function App() {
   // --- FUNÇÕES DE ORÇAMENTO E KANBAN ---
   const handleCreateBasicCard = async (e) => {
     if (e) e.preventDefault();
-
-    // 🚩 DEBUG: Verifique se o ID aparece aqui no seu F12
-    console.log("ID do usuário logado:", currentUser?.id);
 
     const newQuote = {
       titulo: kanbanFormData.title || `Orçamento #${quotes.length + 101}`,
@@ -513,12 +561,10 @@ export default function App() {
       createdBy: currentUser?.id
     };
 
-    console.log("Pacote enviado para o PHP:", newQuote);
-
     try {
-      const response = await fetch('http://localhost/polibalbino-api/orcamentos.php', {
+      const response = await fetch(`${API_BASE}/orcamentos.php`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: authHeaders(),
         body: JSON.stringify(newQuote)
       });
 
@@ -530,11 +576,11 @@ export default function App() {
         setKanbanFormData({ title: '', client: '' });
 
       } else {
-        alert("❌ Erro ao salvar: " + data.error);
+        showToast("Erro ao salvar: " + data.error, 'error');
       }
     } catch (error) {
       console.error("Erro de conexão:", error);
-      alert("Erro ao conectar com o servidor XAMPP.");
+      showToast("Não foi possível conectar ao servidor.", 'error');
     }
   };
 
@@ -550,11 +596,9 @@ export default function App() {
     // 🚩 O PULO DO GATO: Usar String() para evitar erro de tipo (ex: 4 vs "4")
     const isOwner = String(quote.createdBy) === String(currentUser?.id);
 
-    console.log("Acesso no Modal - Admin:", isAdmin, "| Dono:", isOwner);
-
     // 2. Verificação de acesso
     if (!isAdmin && !isOwner) {
-      alert("Você não tem permissão para abrir este orçamento.");
+      showToast("Você não tem permissão para abrir este orçamento.", 'error');
       return;
     }
 
@@ -571,7 +615,7 @@ export default function App() {
 
   const saveCardDetails = async () => {
     if (!selectedCard || !selectedCard.id) {
-      alert("Erro: Card não identificado.");
+      showToast("Erro: Card não identificado.", 'error');
       return;
     }
 
@@ -587,9 +631,9 @@ export default function App() {
     };
 
     try {
-      const response = await fetch('http://localhost/polibalbino-api/atualizar_orcamento.php', {
+      const response = await fetch(`${API_BASE}/atualizar_orcamento.php`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: authHeaders(),
         body: JSON.stringify(dadosAtualizados)
       });
 
@@ -598,7 +642,7 @@ export default function App() {
         setSelectedCard(dadosAtualizados);
 
         await fetchQuotes();
-        alert("✅ Tudo salvo: Cliente, CNPJ, Parcelas e Observações!");
+        showToast("Dados do cliente salvos com sucesso!");
       }
     } catch (error) {
       console.error("Erro na conexão:", error);
@@ -608,13 +652,13 @@ export default function App() {
   const handleAddToQuote = (e) => {
     if (e) e.preventDefault();
 
-    if (!kanbanSelectedItem) return alert("Selecione um item no estoque.");
+    if (!kanbanSelectedItem) return showToast("Selecione um item no estoque.", 'warning');
 
     const qty = Number(quoteQuantity);
     const available = Number(kanbanSelectedItem.quantidade_total || 0) - Number(kanbanSelectedItem.reservedQuantity || 0);
 
-    if (qty <= 0) return alert("A quantidade deve ser maior que zero.");
-    if (qty > available) return alert(`Estoque insuficiente! Disponível: ${available}kg`);
+    if (qty <= 0) return showToast("A quantidade deve ser maior que zero.", 'warning');
+    if (qty > available) return showToast(`Estoque insuficiente! Disponível: ${available}kg`, 'warning');
 
     // 1. Criamos o novo item com um ID único para podermos excluir depois se precisar
     const newItem = {
@@ -677,7 +721,7 @@ export default function App() {
       const temOrcamento = quote && Number(quote.valor_total) > 0;
 
       if (!temOrcamento) {
-        alert("⚠️ Atenção: Não é possível dar 'Ganho' em um card sem orçamento gerado.");
+        showToast("Não é possível fechar um card sem orçamento gerado.", 'warning');
         return; // Interrompe a função aqui e o card volta para o lugar de origem
       }
     }
@@ -688,9 +732,9 @@ export default function App() {
 
   const updateQuoteStatus = async (quoteId, newStatus) => {
     try {
-      const response = await fetch('http://localhost/polibalbino-api/atualizar_status.php', {
+      const response = await fetch(`${API_BASE}/atualizar_status.php`, {
         method: 'POST', // O seu arquivo atualizar_status usa POST
-        headers: { 'Content-Type': 'application/json' },
+        headers: authHeaders(),
         body: JSON.stringify({
           id: quoteId,
           status: newStatus
@@ -875,13 +919,10 @@ export default function App() {
                         // 🚩 Usamos String() nos dois lados para garantir que "4" seja igual a 4
                         const isOwner = String(quote.createdBy) === String(currentUser?.id);
 
-                        console.log("Tentando abrir card:", quote.id);
-                        console.log("É Admin?", isAdmin, "| É dono?", isOwner);
-
                         if (isAdmin || isOwner) {
                           openCardDetails(quote);
                         } else {
-                          alert("Você só pode abrir seus próprios orçamentos.");
+                          showToast("Você só pode abrir seus próprios orçamentos.", 'error');
                         }
                       }}
 
@@ -1137,6 +1178,7 @@ export default function App() {
     setLoginEmail('');      // Limpa o campo de e-mail
     setLoginPassword('');   // Limpa o campo de senha
     setLoginError('');      // Limpa qualquer mensagem de erro
+    localStorage.removeItem('polibalbino_token'); // 🔐 Remove o token de autenticação
   };
 
   /*DASHBOARD - GRAFICOS*/
@@ -1561,7 +1603,7 @@ export default function App() {
 
         // 3. Trava de Segurança
         if (novaQuantidade > limiteMaximoDesteCard) {
-          alert(`Estoque insuficiente! Você só pode ter no máximo ${limiteMaximoDesteCard}kg desse material (os outros ${estoqueTotal - limiteMaximoDesteCard}kg já estão reservados em outros orçamentos).`);
+          showToast(`Estoque insuficiente! Máximo disponível: ${limiteMaximoDesteCard}kg.`, 'warning');
           novaQuantidade = limiteMaximoDesteCard;
         }
 
@@ -1621,14 +1663,14 @@ export default function App() {
     };
 
     try {
-      const response = await fetch('http://localhost/polibalbino-api/atualizar_orcamentos.php', {
+      const response = await fetch(`${API_BASE}/atualizar_orcamentos.php`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: authHeaders(),
         body: JSON.stringify(payload)
       });
 
       if (response.ok) {
-        alert("Informações atualizadas!");
+        showToast("Informações atualizadas!");
         await fetchQuotes(); // Atualiza a lista no Kanban
       }
     } catch (error) {
@@ -2097,20 +2139,7 @@ export default function App() {
                                     placeholder="00.000.000/0000-00"
                                     className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500"
                                     value={extraQuoteData.cnpj}
-
-                                    // Transformamos em um bloco para aceitar o console.log
-                                    onChange={(e) => {
-                                      const novoValor = e.target.value;
-
-                                      // 1. Esse log vai mostrar no F12 exatamente o que o teclado enviou
-                                      console.log("Digitando no CNPJ:", novoValor);
-
-                                      // 2. Atualizamos o estado
-                                      setExtraQuoteData(prev => ({
-                                        ...prev,
-                                        cnpj: novoValor
-                                      }));
-                                    }}
+                                    onChange={(e) => setExtraQuoteData(prev => ({ ...prev, cnpj: e.target.value }))}
                                   />
                                 </div>
                                 <div className="space-y-1">
@@ -2339,14 +2368,14 @@ export default function App() {
                                   };
 
                                   if (!payload.cnpj) {
-                                    alert("ERRO: O CNPJ é obrigatório para finalizar.");
+                                    showToast("O CNPJ é obrigatório para finalizar.", 'error');
                                     return;
                                   }
 
                                   try {
-                                    const response = await fetch('http://localhost/polibalbino-api/finalizar_orcamento.php', {
+                                    const response = await fetch(`${API_BASE}/finalizar_orcamento.php`, {
                                       method: 'POST', // Ou 'PUT', dependendo de como o seu PHP está configurado
-                                      headers: { 'Content-Type': 'application/json' },
+                                      headers: authHeaders(),
                                       body: JSON.stringify(payload)
                                     });
 
@@ -2361,10 +2390,10 @@ export default function App() {
 
                                       await fetchQuotes(); // Atualiza a lista no fundo
                                       setCardStep('details'); // Volta para a tela de detalhes
-                                      alert("✅ Orçamento atualizado com sucesso!");
+                                      showToast("Orçamento atualizado com sucesso!");
                                     }
                                   } catch (e) {
-                                    alert("Erro de conexão com o servidor.");
+                                    showToast("Erro de conexão com o servidor.", 'error');
                                   }
                                 }}
                                 className="bg-green-500 hover:bg-green-600 px-8 py-4 rounded-2xl font-black text-white shadow-xl flex items-center gap-2"
@@ -2387,6 +2416,15 @@ export default function App() {
 
           {/* --- FIM DA TRANCA DE LOGIN --- */}
         </>
+      )}
+
+      {/* Notificação Toast */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
       )}
 
     </div>
