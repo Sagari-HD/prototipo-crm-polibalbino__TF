@@ -1,18 +1,37 @@
 <?php
-// auth.php — Validador de token central. Inclua no topo de cada endpoint protegido.
+// auth.php — valida o token consultando o banco. Inclua no topo de cada endpoint.
 
-session_start();
+header("Access-Control-Allow-Origin: *");
+header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS");
+header("Access-Control-Allow-Headers: Content-Type, Authorization");
 
-// Pega o token do cabeçalho Authorization: Bearer <token>
-$headers = getallheaders();
-$authHeader = $headers['Authorization'] ?? '';
-$token = str_replace('Bearer ', '', $authHeader);
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { http_response_code(200); exit; }
 
-// Valida se o token existe e corresponde à sessão ativa
-if (empty($token) || !isset($_SESSION['token']) || $_SESSION['token'] !== $token) {
+$headers     = getallheaders();
+$authHeader  = $headers['Authorization'] ?? '';
+$token       = str_replace('Bearer ', '', $authHeader);
+
+if (empty($token)) {
     http_response_code(401);
-    echo json_encode(["error" => "Não autorizado. Faça login novamente."]);
+    echo json_encode(["error" => "Token ausente. Faça login novamente."]);
     exit;
 }
-// Se chegar aqui, a requisição está autenticada.
-?>
+
+$conn = new mysqli("localhost", "root", "", "polibalbino_db");
+$conn->set_charset("utf8mb4");
+
+$stmt = $conn->prepare("SELECT id, cargo FROM usuarios WHERE token = ?");
+$stmt->bind_param("s", $token);
+$stmt->execute();
+$usuario = $stmt->get_result()->fetch_assoc();
+
+if (!$usuario) {
+    http_response_code(401);
+    echo json_encode(["error" => "Sessão inválida. Faça login novamente."]);
+    exit;
+}
+
+// Disponibiliza o usuário autenticado para os endpoints que precisarem
+$usuarioAutenticado = $usuario;
+// Se a conexão foi aberta aqui, os outros arquivos reabrem a própria.
+// Feche apenas se nenhum outro arquivo vai reutilizá-la.
