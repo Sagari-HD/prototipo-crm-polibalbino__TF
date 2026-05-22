@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Tempo de geração: 19/05/2026 às 04:21
+-- Tempo de geração: 20/05/2026 às 22:13
 -- Versão do servidor: 10.4.32-MariaDB
 -- Versão do PHP: 8.0.30
 
@@ -119,18 +119,19 @@ CREATE TABLE `usuarios` (
   `nome` varchar(100) NOT NULL,
   `email` varchar(100) NOT NULL,
   `senha` varchar(255) NOT NULL,
-  `cargo` enum('Admin','Vendedor') DEFAULT 'Vendedor'
+  `cargo` enum('Admin','Vendedor') DEFAULT 'Vendedor',
+  `token` varchar(64) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Despejando dados para a tabela `usuarios`
 --
 
-INSERT INTO `usuarios` (`id`, `nome`, `email`, `senha`, `cargo`) VALUES
-(1, 'Luana Balbino', 'luana@polibalbino.com.br', '$2y$10$BO1mRfvwv/t2J77367Yg.OxQ2lrzF04DaMsTzbFCAyCOFCt7Ef1Au', 'Admin'),
-(4, 'ana', 'ana@polibalbino.com.br', '$2y$10$1Jk67d0aOoAIeNNlPCHNEOA5Znnv2Dl1WavLvGe7JoWPiiR8d833e', 'Vendedor'),
-(5, 'lua', 'lua@polibalbino.com.br', '$2y$10$WzTWC6zfcTiDid.kkLZL6eIXRZESvCyQV52YKLh9hNn.UC8UTNNF6', 'Vendedor'),
-(6, 'joão', 'joao@polibalbino.com.br', '$2y$10$TYpAF3P1zKbL1JLpYju6ae8PiPv3yAv9wESg4LxTXgt8.WcT4.NKK', 'Vendedor');
+INSERT INTO `usuarios` (`id`, `nome`, `email`, `senha`, `cargo`, `token`) VALUES
+(1, 'Luana Balbino', 'luana@polibalbino.com.br', '$2y$10$BO1mRfvwv/t2J77367Yg.OxQ2lrzF04DaMsTzbFCAyCOFCt7Ef1Au', 'Admin', NULL),
+(4, 'ana', 'ana@polibalbino.com.br', '$2y$10$1Jk67d0aOoAIeNNlPCHNEOA5Znnv2Dl1WavLvGe7JoWPiiR8d833e', 'Vendedor', NULL),
+(5, 'lua', 'lua@polibalbino.com.br', '$2y$10$WzTWC6zfcTiDid.kkLZL6eIXRZESvCyQV52YKLh9hNn.UC8UTNNF6', 'Vendedor', NULL),
+(6, 'joão', 'joao@polibalbino.com.br', '$2y$10$TYpAF3P1zKbL1JLpYju6ae8PiPv3yAv9wESg4LxTXgt8.WcT4.NKK', 'Vendedor', NULL);
 
 --
 -- Índices para tabelas despejadas
