@@ -1,5 +1,5 @@
 <?php
-// auth.php — valida o token consultando o banco. Inclua no topo de cada endpoint.
+// auth.php — valida o token consultando o banco. 
 
 header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS");
@@ -34,4 +34,4 @@ if (!$usuario) {
 // Disponibiliza o usuário autenticado para os endpoints que precisarem
 $usuarioAutenticado = $usuario;
 // Se a conexão foi aberta aqui, os outros arquivos reabrem a própria.
-// Feche apenas se nenhum outro arquivo vai reutilizá-la.
+?>

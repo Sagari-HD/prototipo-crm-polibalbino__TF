@@ -35,3 +35,4 @@ if ($user && password_verify($password, $user['senha'])) {
     echo json_encode(["error" => "E-mail ou senha incorretos."]);
 }
 $conn->close();
+?>

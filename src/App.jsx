@@ -1173,12 +1173,25 @@ export default function App() {
     );
   };
 
-  const handleLogout = () => {
-    setCurrentUser(null);   // Desloga o usuário
-    setLoginEmail('');      // Limpa o campo de e-mail
-    setLoginPassword('');   // Limpa o campo de senha
-    setLoginError('');      // Limpa qualquer mensagem de erro
-    localStorage.removeItem('polibalbino_token'); // 🔐 Remove o token de autenticação
+  const handleLogout = async () => {
+    try {
+      // Avisa o banco para anular o token ANTES de limpar o frontend
+      await fetch(`${API_BASE}/logout.php`, {
+        method: 'POST',
+        headers: authHeaders()
+      });
+    } catch (error) {
+      // Mesmo se o servidor estiver fora, continua o logout local
+      console.warn("Não foi possível invalidar o token no servidor:", error);
+    }
+
+    // Limpeza local 
+    setCurrentUser(null);
+    setLoginEmail('');
+    setLoginPassword('');
+    setLoginError('');
+    localStorage.removeItem('polibalbino_token');
+    localStorage.removeItem('polibalbino_user'); 
   };
 
   /*DASHBOARD - GRAFICOS*/
