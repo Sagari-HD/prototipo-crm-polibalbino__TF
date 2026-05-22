@@ -56,38 +56,38 @@ O sistema permite que vendedores criem e gerenciem propostas comerciais diretame
 
 ```
 ┌─────────────────────────────────────────────┐
-│              FRONTEND (React + Vite)         │
+│              FRONTEND (React + Vite)        │
 │                                             │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐  │
-│  │ Catálogo │  │  Kanban  │  │Dashboard │  │
-│  │ Estoque  │  │ Vendas   │  │ (Admin)  │  │
-│  └──────────┘  └──────────┘  └──────────┘  │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐   │
+│  │ Catálogo │  │  Kanban  │  │Dashboard │   │
+│  │ Estoque  │  │ Vendas   │  │ (Admin)  │   │
+│  └──────────┘  └──────────┘  └──────────┘   │
 │         │            │             │        │
 │         └────────────┴─────────────┘        │
 │                      │                      │
-│              authHeaders() + fetch           │
+│              authHeaders() + fetch          │
 └──────────────────────┼──────────────────────┘
                        │ HTTP/JSON
 ┌──────────────────────┼──────────────────────┐
-│           BACKEND (PHP / Apache)             │
+│           BACKEND (PHP / Apache)            │
 │                      │                      │
 │  ┌───────────────────▼──────────────────┐   │
 │  │             auth.php                 │   │
 │  │   (Valida token via $_SESSION)       │   │
 │  └───────────────────┬──────────────────┘   │
 │                      │                      │
-│  ┌──────┐ ┌────────┐ ┌──────────┐ ┌──────┐ │
-│  │login │ │produto │ │orcamento │ │users │ │
-│  │.php  │ │s.php   │ │s.php     │ │.php  │ │
-│  └──────┘ └────────┘ └──────────┘ └──────┘ │
+│  ┌──────┐ ┌────────┐ ┌──────────┐ ┌──────┐  │
+│  │login │ │produto │ │orcamento │ │users │  │
+│  │.php  │ │s.php   │ │s.php     │ │.php  │  │
+│  └──────┘ └────────┘ └──────────┘ └──────┘  │
 │                      │                      │
 └──────────────────────┼──────────────────────┘
                        │ mysqli
 ┌──────────────────────┼──────────────────────┐
-│              MySQL (polibalbino_db)           │
+│              MySQL (polibalbino_db)         │
 │                                             │
 │  produtos | orcamentos | itens_orcamento    │
-│                    usuarios                  │
+│                    usuarios                 │
 └─────────────────────────────────────────────┘
 ```
 
