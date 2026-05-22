@@ -48,7 +48,7 @@ O sistema permite que vendedores criem e gerenciem propostas comerciais diretame
 ### Comunicação
 - **REST API** via `fetch` com headers `Authorization: Bearer <token>`
 - **JSON** como formato de troca de dados
-- **Sessions PHP** para gestão de autenticação stateful
+- **Token persistido no banco** (`usuarios.token`) para gestão de autenticação stateless
 
 ---
 
@@ -59,7 +59,7 @@ O sistema permite que vendedores criem e gerenciem propostas comerciais diretame
 │              FRONTEND (React + Vite)        │
 │                                             │
 │  ┌──────────┐  ┌──────────┐  ┌──────────┐   │
-│  │ Catálogo │  │  Kanban  │  │Dashboard │   │
+│  │ Catálogo │  │  Kanban  │  │Dashboard │   │ 
 │  │ Estoque  │  │ Vendas   │  │ (Admin)  │   │
 │  └──────────┘  └──────────┘  └──────────┘   │
 │         │            │             │        │
@@ -73,7 +73,7 @@ O sistema permite que vendedores criem e gerenciem propostas comerciais diretame
 │                      │                      │
 │  ┌───────────────────▼──────────────────┐   │
 │  │             auth.php                 │   │
-│  │   (Valida token via $_SESSION)       │   │
+│  │  (Valida token via SELECT no banco)  │   │
 │  └───────────────────┬──────────────────┘   │
 │                      │                      │
 │  ┌──────┐ ┌────────┐ ┌──────────┐ ┌──────┐  │
@@ -167,6 +167,7 @@ polibalbino-crm/
 | email | VARCHAR(100) | E-mail de acesso (único) |
 | senha | VARCHAR(255) | Hash bcrypt da senha |
 | cargo | ENUM | `Admin` ou `Vendedor` |
+| token | VARCHAR(64) | Token de sessão ativo (gerado no login, nulo após logout) |
 
 #### `produtos`
 | Coluna | Tipo | Descrição |
@@ -284,7 +285,8 @@ Authorization: Bearer <token>
 
 | Método | Endpoint | Descrição |
 |---|---|---|
-| POST | `/login.php` | Autenticação e geração de token |
+| POST | `/login.php` | Autenticação, geração e persistência do token no banco |
+| POST | `/logout.php` | Invalida o token no banco (`token = NULL`) |
 | GET | `/produtos.php` | Lista todos os produtos com estoque disponível |
 | POST | `/produtos.php` | Cadastra novo produto |
 | PUT | `/produtos.php` | Atualiza produto existente |
@@ -298,6 +300,8 @@ Authorization: Bearer <token>
 | GET | `/usuarios.php` | Lista todos os usuários |
 | POST | `/usuarios.php` | Cadastra novo usuário |
 | DELETE | `/usuarios.php?id={id}` | Remove usuário |
+
+> ⚠️ **Segurança:** O `auth.php` valida cada requisição consultando `WHERE token = ?` no banco. O token é sobrescrito a cada novo login — ou seja, apenas **uma sessão ativa por usuário** é possível simultaneamente. O logout deve chamar `/logout.php` para anular o token no banco; sem isso, o token permanece válido indefinidamente.
 
 ---
 
@@ -353,6 +357,27 @@ Vendedor
 
 ---
 
+## 🔐 Modelo de Segurança
+
+### Fluxo de autenticação
+```
+1. Usuário envia e-mail + senha → login.php
+2. PHP verifica hash bcrypt da senha
+3. Gera token aleatório (64 hex chars) e salva em usuarios.token no banco
+4. Frontend armazena token no localStorage
+5. Cada requisição envia header: Authorization: Bearer <token>
+6. auth.php valida: SELECT id, cargo FROM usuarios WHERE token = ?
+7. Logout → chama logout.php → UPDATE usuarios SET token = NULL
+```
+
+### Propriedades do modelo
+- **Uma sessão por usuário** — novo login sobrescreve o token anterior, encerrando sessões paralelas
+- **Stateless no servidor** — nenhuma `$_SESSION` PHP; o estado vive no banco
+- **Revogação imediata** — setar `token = NULL` invalida o acesso instantaneamente
+- **Senhas protegidas** — armazenadas apenas como hash bcrypt, nunca retornadas ao frontend
+
+---
+
 ## 🧑‍💻 Autores e Desenvolvedores
 Este sistema foi idealizado e implementado por:
 
@@ -367,4 +392,3 @@ Este sistema foi idealizado e implementado por:
 Este projeto foi desenvolvido como trabalho de conclusão de curso (TCC). Todos os direitos reservados à **Polibalbino Termoplásticos**.
 
 ---
-
